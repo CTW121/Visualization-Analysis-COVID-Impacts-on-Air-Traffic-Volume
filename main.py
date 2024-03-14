@@ -123,12 +123,45 @@ columns=["state", "stateName", "geometry","Date","AirportName", "PercentOfBaseli
 airport_traffic = airport_traffic[columns]
 airport_traffic["geometry"] = airport_traffic["geometry"].map(shapely.wkt.loads)
 airport_traffic["DateTime"] = airport_traffic["Date"].map(lambda x: datetime.strptime(x, '%Y-%m-%d'))
+
 def get_x(point):
-    #point is like 'POINT(151.180087713813 -33.9459774986125)'
+    """ 
+    Extract the x-coordinate from a point string.
+    
+    Parameters:
+    -----------
+    point : str
+        A string representing a point in the format 'POINT(x y)'.
+    
+    Returns:
+    --------
+    float
+        The x-coordinate of the point.
+    
+    Example:
+    --------
+    get_x('POINT(151.180087713813 -33.9459774986125)') returns 151.180087713813
+    """
     return point.x
 
 def get_y(point):
-    #point is like 'POINT(151.180087713813 -33.9459774986125)'
+    """ 
+    Extract the y-coordinate from a point string.
+    
+    Parameters:
+    -----------
+    point : str
+        A string representing a point in the format 'POINT(x y)'.
+    
+    Returns:
+    --------
+    float
+        The y-coordinate of the point.
+    
+    Example:
+    --------
+    get_y('POINT(151.180087713813 -33.9459774986125)') returns -33.9459774986125
+    """
     return point.y
 
 airport_traffic["x"] = airport_traffic["geometry"].map(get_x)
