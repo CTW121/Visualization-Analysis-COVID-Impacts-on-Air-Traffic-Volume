@@ -5,5 +5,5 @@ The COVID-19 positive cases and the air-traffic volume in the United States data
 - [COVID-19 positive cases](https://www.kaggle.com/sudalairajkumar/covid19-in-usa)
 - [Air-traffic volume in USA](https://www.kaggle.com/terenceshin/covid19s-impact-on-airport-traffic)
 
-Here is the screenshot of the web-based interactive data visualization dashboard designed by utilizing Python Bokeh
+Here is the screenshot of the web-based interactive data visualization dashboard designed by utilizing Python Bokeh.
 ![Screenshot of the interactive data visualization](https://github.com/CTW121/Visualization-Analysis-COVID-Impacts-on-Air-Traffic-Volume/blob/master/images/dashboard.PNG)
