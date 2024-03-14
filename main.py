@@ -164,14 +164,23 @@ def get_y(point):
     """
     return point.y
 
+# Extract x-coordinate from the 'geometry' column and assign it to the 'x' column
 airport_traffic["x"] = airport_traffic["geometry"].map(get_x)
+
+# Extract y-coordinate from the 'geometry' column and assign it to the 'y' column
 airport_traffic["y"] = airport_traffic["geometry"].map(get_y)
+
+# Select specific columns and reorder them
 airport_traffic = airport_traffic[["Date","DateTime","x","y","stateName","AirportName","PercentOfBaseline"]]
+
+# Sort the dataframe by 'AirportName'
 airport_traffic = airport_traffic.sort_values(by=['AirportName'])
 
+# Find unique airport names from the 'AirportName' column
 airport_unique = list(set(airport_traffic["AirportName"]))
 airport_unique.sort()
 
+# Create a dataframe with unique combinations of 'AirportName' and 'stateName'
 df_stateName_airportName = airport_traffic.drop(columns=["Date","DateTime","x","y","PercentOfBaseline"])
 stateName=[]
 airportName=[]
@@ -179,28 +188,56 @@ for i, airport in enumerate(airport_unique):
     indexNoAirport = airport_traffic.loc[airport_traffic['AirportName']==airport].index[0]
     airportName.append(airport)
     stateName.append(df_stateName_airportName._get_value(indexNoAirport, 'stateName'))
+
+# Create a dataframe with unique combinations of 'AirportName' and 'StateName'
 df_stateName_airportName_unique = pd.DataFrame({'AirportName': airportName, 'StateName': stateName})
 df_stateName_airportName_unique = df_stateName_airportName_unique.sort_values(by=['AirportName'])
 df_stateName_airportName_unique = df_stateName_airportName_unique.reset_index()
 df_stateName_airportName_unique = df_stateName_airportName_unique.drop(columns=['index'])
 #print(df_stateName_airportName_unique.head(20))
 
+# Find unique airport names from the 'AirportName' column
 unique_airports = list(set(airport_traffic["AirportName"].values))
 
+
 def update_airport_data(selected_date,selected_states):
+    """ 
+    Update airport data based on the selected date and states.
+    
+    Parameters:
+    -----------
+    selected_date : str
+        The selected date for filtering airport traffic data.
+    
+    selected_states : list
+        A list of selected states for further filtering of airport traffic data.
+    
+    Returns:
+    --------
+    ColumnDataSource
+        A ColumnDataSource object containing the updated airport data ready for visualization.
+    """
+
+    # Filter data for the selected date
     traffic_selected_date = airport_traffic.loc[airport_traffic["Date"] == selected_date]
+
+    # Calculate circle size based on PercentOfBaseline
     traffic_selected_date["CircleSize"] = np.round(traffic_selected_date["PercentOfBaseline"].values/2)
+
+    # Filter data for selected states if any
     if(len(selected_states)>0):
         frames = []
         for i in range(len(selected_states)):
             frames.append(traffic_selected_date.loc[traffic_selected_date["stateName"] == selected_states[i],:])
         traffic_selected_date = pd.concat(frames)
+    
     # For just hover tool, to show "No data"
     n =np.empty(traffic_selected_date["stateName"].values.shape)
     n[:] = np.nan
     traffic_selected_date["positiveIncrease"] = n    
     traffic_selected_date.fillna({'positiveIncrease' : 'No data'}, inplace = True)
-    #------------
+    
+    # Return data in ColumnDataSource format for Bokeh plotting
     return ColumnDataSource(data={'x': traffic_selected_date["x"].values,
                                  'y': traffic_selected_date["y"].values,
                                  "stateName": traffic_selected_date["stateName"].values,
@@ -211,13 +248,39 @@ def update_airport_data(selected_date,selected_states):
 
 
 def create_data_for_heatmap(df):
+    """ 
+    Create data suitable for a heatmap based on the given DataFrame.
+    
+    Parameters:
+    -----------
+    df : pandas DataFrame
+        The DataFrame containing the data to be transformed.
+    
+    Returns:
+    --------
+    ColumnDataSource
+        A ColumnDataSource object containing the data suitable for a heatmap.
+    """
     columns = ["Date","DateTime","AirportName", "PercentOfBaseline"]
     df1 = df[columns]
     df1 = df1.sort_values(["DateTime"])
     return ColumnDataSource(df1)
 
 def update_heatmap_period(attr, old, new):
-  
+    """ 
+    Update the heatmap data based on the selected date range and airports.
+    
+    Parameters:
+    -----------
+    attr : str
+        The attribute that triggered the update (usually 'value').
+    
+    old : any
+        The old value of the attribute.
+    
+    new : any
+        The new value of the attribute.
+    """
     date1 = datetime.fromtimestamp(dateRange.value[0]/1000)
     date_str1 = date1.strftime("%Y-%m-%d")
 
@@ -251,13 +314,19 @@ def update_heatmap_period(attr, old, new):
 
 USA_states = {state: abbrev for abbrev, state in us_state_abbrev.items()}
 
+# Map full state names to their abbreviations
 df_us_states_covid19_daily['stateName'] = df_us_states_covid19_daily['state'].map(USA_states)
 # df_us_states_covid19_daily["date"] = df_us_states_covid19_daily["date"].astype(str)
+
+# Convert 'date' column to string and assign it to 'DateTime' column
 df_us_states_covid19_daily["DateTime"] = df_us_states_covid19_daily["date"].astype(str)
 #.map(lambda x: datetime.strptime(x, '%Y-%m-%d'))
+
+# Create copies of the DataFrame for Line Plot and Choropleth Map
 df_us_states_covid19_daily_LinePlot = df_us_states_covid19_daily.copy()
 #df_us_states_covid19_daily_Choropleth = df_us_states_covid19_daily.copy()
 
+# Get unique state names excluding non-contiguous states and territories
 us_state_unique = list(set(df_us_states_covid19_daily['stateName']))
 toBeRemoveList = ['Hawaii', 'Alaska', 'Guam', 'Virgin Islands', 'American Samoa', 'Puerto Rico', 'Northern Mariana Islands']
 for i, name in enumerate(toBeRemoveList):
@@ -265,6 +334,8 @@ for i, name in enumerate(toBeRemoveList):
 
 us_state_unique.sort(reverse = False)
 #print(us_state_unique[:])
+
+# Assign colors to unique state names
 us_state_color = ['#393b79', '#5254a3', '#6b6ecf', '#9c9ede', '#637939', '#8ca252', '#b5cf6b', '#cedb9c', '#8c6d31', '#bd9e39',
                 '#e7ba52', '#e7cb94', '#843c39', '#ad494a', '#d6616b', '#e7969c', '#7b4173', '#a55194', '#ce6dbd', '#de9ed6',
                 '#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#31a354', '#74c476',
@@ -283,11 +354,30 @@ import json
 
 initial_selected_date = "2020-11-11"
 
+# Select relevant columns for the Choropleth map
 df_state_Choropleth = (df_us_states_covid19_daily
             .loc[:,['date', 'state', 'positive', 'death', 'positiveCasesViral', 'positiveIncrease', 'stateName']])
+
+# Drop rows with any NaN values
 df_state_Choropleth = df_state_Choropleth.dropna(axis=0, how='any')     # delete/drop NaN rows
 
 def json_data(selectedDate, state_list):
+    """
+    Generate JSON data for visualization based on the selected date and list of states.
+
+    Parameters:
+    -----------
+    selectedDate : str
+        The selected date for filtering data.
+
+    state_list : list
+        A list of selected states for visualization.
+
+    Returns:
+    --------
+    str
+        JSON formatted data for visualization.
+    """
     date = selectedDate
     df_state_date = df_state_Choropleth[df_state_Choropleth['date'] == date]
     
@@ -371,6 +461,20 @@ airport_traffic_scatterplot = airport_traffic.copy()
 df_us_states_covid19_daily_scatterplot = df_us_states_covid19_daily.copy()
 
 def update_state_airport_data(selected_states):
+    """
+    Update airport data based on the selected states.
+
+    Parameters:
+    -----------
+    selected_states : list
+        A list of selected states for which airport data needs to be updated.
+
+    Returns:
+    --------
+    ColumnDataSource
+        A ColumnDataSource object containing the updated airport data.
+    """
+
     airport_selected_states = []
     selectedState = []
     for i, statename in enumerate(selected_states):
@@ -390,6 +494,19 @@ def update_state_airport_data(selected_states):
     return ColumnDataSource(df_airport_states)
 
 def make_scatter_plot(src):
+    """
+    Generate a scatter plot of airport(s) traffic volume vs COVID-19 positive cases in the selected state.
+
+    Parameters:
+    -----------
+    src : ColumnDataSource
+        A ColumnDataSource object containing the data for the scatter plot.
+
+    Returns:
+    --------
+    figure
+        A Bokeh figure object representing the scatter plot.
+    """
     pScatter = figure(title="Scatter plot of airport(s) traffic volume vs COVID-19 positive cases in selected state (with regression line)",
                         x_axis_label="COVID-19 positive cases", 
                         y_axis_label="Airport traffic volume (%)",
@@ -437,6 +554,19 @@ def make_scatter_plot(src):
 # generate dataframe and columndatasource
 # for line plot
 def make_dataset(state_list):
+    """
+    Create a ColumnDataSource object for a line plot representing COVID-19 cases over time for selected states.
+
+    Parameters:
+    -----------
+    state_list : list
+        A list of selected states for which the dataset needs to be created.
+
+    Returns:
+    --------
+    ColumnDataSource
+        A ColumnDataSource object containing the data for the line plot.
+    """
     xs = []
     ys = []
     datetime = []
@@ -497,7 +627,19 @@ def create_line_circle(selected_states):
 
 # function of making the line plot
 def make_plot(src, circle_src):
+    """
+    Create a ColumnDataSource object for a line plot representing COVID-19 cases over time for selected states.
 
+    Parameters:
+    -----------
+    selected_states : list
+        A list of selected states for which the line plot needs to be created.
+
+    Returns:
+    --------
+    ColumnDataSource
+        A ColumnDataSource object containing the data for the line plot.
+    """
     hoverp2 = HoverTool(tooltips = [('Date','@DateTime'),('New cases','@y')])
     wheelzoomp2 = WheelZoomTool()
     panp2 = PanTool()
@@ -520,6 +662,19 @@ def make_plot(src, circle_src):
 
 # function for styling the line plot
 def style(p2):
+    """
+    Apply styling to the line plot.
+
+    Parameters:
+    -----------
+    p2 : figure
+        A Bokeh figure object representing the line plot.
+
+    Returns:
+    --------
+    figure
+        The Bokeh figure object with applied styling.
+    """
     # Title 
     p2.title.align = 'center'
     p2.title.text_font_size = '20pt'
@@ -542,6 +697,20 @@ def style(p2):
 # Define the callback function: update_plot
 # for choropleth map plot and line plot
 def update_plot(attr, old, new):
+    """
+    Update all visualizations based on the selected date and states.
+
+    Parameters:
+    -----------
+    attr : str
+        The attribute triggering the update.
+
+    old : str or int
+        The old value of the attribute.
+
+    new : str or int
+        The new value of the attribute.
+    """
     #List of selected states
     state_to_plot = []
 
@@ -616,10 +785,17 @@ tap = TapTool()
 lasso_select = LassoSelectTool()
 box_select = BoxSelectTool()
 
+# Create a Bokeh figure object for visualization, representing the number of Covid-19 cases
+# Parameters:
+# - title: Title of the plot
+# - plot_height: Height of the plot area
+# - plot_width: Width of the plot area
+# - toolbar_location: Location of the toolbar containing interactive tools
+# - tools: List of interactive tools for the plot (including hover, wheel zoom, reset tool, pan, and tap)
 p1 = figure(title = 'Number of Covid-19 cases: %s' %initial_selected_date, 
             plot_height = 600 , plot_width = 1000, toolbar_location = "right", tools=[hover,wheelzoom,resettool,pan, tap])         ## *** IMPORTANT : remember to add the tap in tools *** ##
-p1.xgrid.grid_line_color = None
-p1.ygrid.grid_line_color = None
+p1.xgrid.grid_line_color = None # Remove grid lines along the x-axis
+p1.ygrid.grid_line_color = None # Remove grid lines along the y-axis
 
 #Add patch renderer to figure.
 #for Choropleth map plot
@@ -633,16 +809,28 @@ initial_circle = Circle(x='x', y='y', size="CircleSize", fill_color='blue')
 selected_circle = Circle(fill_alpha=1, fill_color="blue", line_color="blue")
 nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 
+# Add glyphs to the plot representing airport data
+# Parameters:
+# - airport_src: ColumnDataSource containing airport data
+# - initial_circle: Glyph representing airports initially
+# - selection_glyph: Glyph representing airports when selected
+# - nonselection_glyph: Glyph representing airports when not selected
 p1.add_glyph(airport_src,
             initial_circle,
             selection_glyph=selected_circle,
             nonselection_glyph=nonselected_circle)
 
+# Add color bar to the plot below the main visualization
+# Parameters:
+# - color_bar: ColorBar object representing the color legend
+# - 'below': Position of the color bar relative to the plot (below the plot)
 p1.add_layout(color_bar, 'below')
+
+# Update the title of the plot to display the number of Covid-19 cases for the initial selected date
 p1.title.text = 'Number of Covid-19 cases: {date}'.format(date=initial_selected_date)
-p1.title.align = 'center'
-p1.title.text_font_size = '20pt'
-p1.title.text_font = 'serif'
+p1.title.align = 'center' # Align the title text to the center
+p1.title.text_font_size = '20pt' # Set the font size of the title
+p1.title.text_font = 'serif' # Set the font style of the title
 
 # Make a slider object: slider
 #for Choropleth map plot
@@ -652,7 +840,18 @@ date_slider.on_change('value', update_plot)
 # call update_plot function when multiple states are selected on US map
 geosource.selected.on_change('indices', update_plot)
 airport_src.selected.on_change('indices', update_heatmap_period)
+
 #---------------------------Create a heatmap----------------------
+# Create a heatmap plot using Bokeh
+# Parameters:
+# - plot_width: Width of the plot area
+# - plot_height: Height of the plot area
+# - title: Title of the heatmap
+# - x_range: Range of values for the x-axis (unique dates)
+# - y_range: Range of values for the y-axis (unique airport names)
+# - toolbar_location: Location of the toolbar containing interactive tools
+# - tools: List of interactive tools for the plot (lasso_select, box_select, tap, pan, wheelzoom, resettool, hover_heatmap)
+# - x_axis_location: Location of the x-axis (above the plot)
 heatmap_src = create_data_for_heatmap(airport_traffic)
 
 colors = ["#75968f", "#a5bab7", "#c9d9d3", "#e2e2e2", "#dfccce", "#ddb7b1", "#cc7878", "#933b41", "#550b1d"]
@@ -672,13 +871,21 @@ p3 = figure(plot_width=1700, plot_height=800, title="Heatmap of airports in US (
            x_range=unique_dates, y_range=unique_airports,
            toolbar_location="left", tools=[lasso_select,box_select,tap,pan,wheelzoom,resettool,hover_heatmap], x_axis_location="above")
 
+# Add rectangles to represent the heatmap cells
 p3.rect(x="Date", y="AirportName", width=1, height=1, source=heatmap_src,
        line_color=None, fill_color=transform('PercentOfBaseline', mapper))
 
+# Add color bar to indicate the range of traffic volume percentages
+# Parameters:
+# - color_mapper: Mapper to map data values to colors
+# - location: Location of the color bar
+# - ticker: Ticker for the color bar ticks
+# - formatter: Formatter for the tick labels
 color_bar = ColorBar(color_mapper=mapper, location=(0, 0),
                      ticker=BasicTicker(desired_num_ticks=len(colors)),
                      formatter=PrintfTickFormatter(format="%d%%"))
 
+# Set the title properties
 p3.title.align = 'center'
 p3.title.text_font_size = '20pt'
 p3.title.text_font = 'serif'
@@ -716,31 +923,50 @@ class MyFormatter(TickFormatter):
     __implementation__ = TypeScript(TS_CODE)
 
 
-#----------------------------------------------------------------------------
+#----------------------------------------------------------- #
+# Add color bar to the right of the heatmap
+# Parameters:
+# - color_bar: Color bar object
+# - 'right': Position of the color bar relative to the heatmap (to the right)
 p3.add_layout(color_bar, 'right')
 
+# Set the formatter for the x-axis to custom formatter (MyFormatter)
 p3.xaxis.formatter = MyFormatter()
 
+# Set properties for the x-axis
+# - major_tick_line_color: Color of major ticks
+# - major_label_text_font_size: Font size of major tick labels
+# - major_label_standoff: Distance of major tick labels from the axis
+# - major_label_orientation: Orientation of major tick labels
 # p3.axis.axis_line_color = None
 p3.axis.major_tick_line_color = "red"
 p3.axis.major_label_text_font_size = "14px"
 p3.axis.major_label_standoff = 0
 p3.xaxis.major_label_orientation = 1.0
+
+# Set properties for the y-axis
+# - axis_label_text_font_size: Font size of axis label
 p3.yaxis.axis_label_text_font_size = "30pt"
+
+# Set properties for the x-axis label
+# - axis_label_text_font_size: Font size of axis label
 p3.xaxis.axis_label_text_font_size = "7pt"
 
-
+# Create a DateRangeSlider widget to select a period
 dateRange = DateRangeSlider(title='Period', value=(date(2020, 4, 1),date(2020, 6, 1)), start=date(2020, 3, 15), end=date(2020, 12, 1), step=1, format = "%Y-%m-%d")
+
+# Attach an event listener to the DateRangeSlider for updating the heatmap period
 dateRange.on_change('value', update_heatmap_period)
 
-#---------
 
-
-# call function of making the dataset for line plot
+# Call function of making the dataset for line plot
 line_src = make_dataset(initial_state_selection_linePlot)
 circle_src = create_line_circle(initial_state_selection_linePlot)
-# call the function of making the line plot 
+
+# Call the function of making the line plot
 p2 = make_plot(line_src,circle_src)
+
+# Attach an event listener to the heatmap source for updating the plot
 heatmap_src.selected.on_change("indices",update_plot)
 
 # ---------------------------------------------------------- #
@@ -757,6 +983,7 @@ pScatter = make_scatter_plot(state_airport_src)
 # ---------------------------------------------------------- #
 # show the airport and state table in the dashboard
 
+# Create DataTable with columns corresponding to DataFrame columns
 from bokeh.models.widgets import DataTable, DateFormatter, TableColumn
 
 Columns = [TableColumn(field=Ci, title=Ci) for Ci in df_stateName_airportName_unique.columns]
@@ -774,11 +1001,13 @@ sup_title = Div(text=html)
 #layout = column(p, controls)
 #layout = gridplot([[p, state_selection],[date_slider, None]])
 
+# Arrange components into layouts
 layout1 = column(sup_title, p1, date_slider, p2, data_table)
 layout2 = column(dateRange, p3, pScatter)
 layout = row(layout1,layout2)
 
+# Add the layout to the current document
 curdoc().add_root(layout)
 
-#Display figure.
+# Display the figure
 show(layout)
